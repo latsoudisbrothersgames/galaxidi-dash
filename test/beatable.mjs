@@ -1,5 +1,5 @@
-// Proves every level can be finished: depth-first search over hold/release inputs
-// using the game's own physics (the ==SIM== block of index.html).
+// Proves every level can be finished, and every strawberry collected on a finishing run:
+// depth-first search over hold/release inputs using the game's own physics (the ==SIM== block of index.html).
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -8,9 +8,10 @@ const { LEVELS, newState, setHold, step } = new Function(sim + '; return { LEVEL
 
 const K = +(process.env.K || 4); // physics steps per decision (4 = 1/60 s)
 
-function clone(s) { return { ...s, used: s.used.slice() }; }
+function clone(s) { return { ...s, used: s.used.slice(), got: s.got.slice() }; }
 
-function solve(L) {
+// coin: a strawberry object the run must collect, or null for a plain finish
+function solve(L, coin) {
   const seen = new Set();
   let best = 0, nodes = 0;
   const stack = [{ s: newState(), node: null }];
@@ -23,9 +24,10 @@ function solve(L) {
       setHold(n, hold);
       for (let i = 0; i < K && !n.dead && !n.won; i++) step(n, L);
       if (n.dead) continue;
+      if (coin && !n.got.includes(coin.ci) && n.x > coin.x + 1) continue;
       if (n.won) { const path = [hold]; for (let p = node; p; p = p.up) path.unshift(p.h); return { ok: true, nodes, path }; }
       best = Math.max(best, n.x);
-      const key = `${Math.round(n.x * 100)}|${n.mode}|${Math.round(n.y * 20)}|${Math.round(n.vy * 2)}|${+n.hold}|${+n.buf}|${n.used.length}`;
+      const key = `${Math.round(n.x * 100)}|${n.mode}|${n.grav}|${Math.round(n.y * 20)}|${Math.round(n.vy * 2)}|${+n.hold}|${+n.buf}|${n.used.length}|${n.got.length}`;
       if (seen.has(key)) continue;
       seen.add(key);
       stack.push({ s: n, node: { h: hold, up: node } });
@@ -37,13 +39,18 @@ function solve(L) {
 let fail = 0;
 for (const L of LEVELS) {
   const t = Date.now();
-  const r = solve(L);
+  const r = solve(L, null);
   if (r.ok) {
     const presses = r.path.filter((h, i) => h && !r.path[i - 1]).length;
     console.log(`PASS ${L.id.padEnd(9)} len=${L.len} objs=${L.objs.length} presses=${presses} nodes=${r.nodes} ${Date.now() - t}ms`);
   } else {
     fail++;
     console.log(`FAIL ${L.id.padEnd(9)} furthest x=${r.best.toFixed(2)} of ${L.len} nodes=${r.nodes}`);
+  }
+  for (const c of L.objs.filter(o => o.t === 'c')) {
+    const rc = solve(L, c);
+    if (rc.ok) console.log(`  PASS strawberry ${c.ci} at (${c.x}, ${c.y})`);
+    else { fail++; console.log(`  FAIL strawberry ${c.ci} at (${c.x}, ${c.y}) furthest x=${rc.best.toFixed(2)}`); }
   }
 }
 process.exit(fail ? 1 : 0);
