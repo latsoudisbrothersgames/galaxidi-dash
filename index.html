@@ -190,7 +190,7 @@ function step(s, L) {
   const gs = s.grav;
   if (s.mode === 'cube') {
     if (s.hold && s.onGround) { s.vy = JUMP * gs; s.onGround = false; s.buf = false; s.ev = 'jump'; }
-    s.vy -= G * gs * DT; if (s.vy < -VFALL) s.vy = -VFALL; if (s.vy > VFALL) s.vy = VFALL;
+    s.vy -= G * gs * DT; if (s.vy * gs < -VFALL) s.vy = -VFALL * gs; // cap fall speed only, so pads keep their full launch
     s.y += s.vy * DT;
     s.onGround = false;
     if (s.y <= 0) { s.y = 0; if (gs > 0) { s.vy = 0; s.onGround = true; } else if (s.vy < 0) s.vy = 0; }
@@ -217,7 +217,7 @@ function step(s, L) {
       else if (s.vy >= 0 && py + 1 <= o.y + 0.3 && (!cube || gs < 0)) { s.y = o.y - 1; s.vy = 0; if (cube) s.onGround = true; }
       else { s.dead = true; return; }
     } else if (o.t === 's' || o.t === 'v') {
-      const y0 = o.t === 's' ? o.y : o.y + 0.45, y1 = o.t === 's' ? o.y + 0.55 : o.y + 1;
+      const y0 = o.t === 's' ? o.y : o.y + 0.55, y1 = o.t === 's' ? o.y + 0.45 : o.y + 1; // spike tips are forgiving
       if (ov(s.x + 0.15, s.y + 0.15, s.x + 0.85, s.y + 0.85, o.x + 0.3, y0, o.x + 0.7, y1)) { s.dead = true; return; }
     } else if (o.t === 'p') {
       if (s.mode === 'cube' && !s.used.includes(o.id) && ov(s.x, s.y, s.x + 1, s.y + 1, o.x, o.y, o.x + 1, o.y + 0.3)) {
@@ -298,7 +298,7 @@ const LEVELS = [
   makeLevel('tsirko', 'Τσίρκο', 12, 128, { root: 48, prog: [0, 7, 5, 7], minor: false }, 300, A => {
     A.s(18); A.ss(28, 2);
     A.b(44, 0, 4, 1); A.b(48, 0, 4, 2); A.s(55);
-    A.p(62); A.ss(64, 4);
+    A.p(62); A.ss(64, 2);
     A.s(76); A.o(85, 2); A.ss(84, 4);
     A.s(96); A.ss(102, 2);
     A.P(112, 'ufo');
@@ -311,7 +311,7 @@ const LEVELS = [
     A.p(242); A.ss(244, 3);
     A.s(256); A.o(264, 2); A.ss(263, 4);
     A.s(278); A.ss(284, 2);
-    A.c(35, 2.5); A.c(66, 4); A.c(150, 7);
+    A.c(35, 2.5); A.c(64, 4.5); A.c(150, 7);
   }, { theme: 'circus' }),
   // Μονοκερούπολη: gravity portals flip you onto the ceiling.
   makeLevel('monokeros', 'Μονοκερούπολη', 300, 120, { root: 52, prog: [0, 9, 5, 7], minor: false }, 312, A => {
